@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/shankar/nocode/blood-connect-web/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

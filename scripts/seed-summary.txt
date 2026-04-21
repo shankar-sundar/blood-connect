@@ -1,0 +1,23 @@
+Seed run: 2026-04-21T16:32:56.204Z
+Password for all accounts: Test@1234
+
+Hyderabad
+  hospitals : 3  (hospital1.hyderabad@test.com … hospital3.hyderabad@test.com)
+  donors    : 25  (donor1.hyderabad@test.com … donor25.hyderabad@test.com)
+  requests  : 27 open (6 no-match, 9 partial, 12 completed) + 4 historical closed
+  history   : 1 donation(s) per donor
+
+Bangalore
+  hospitals : 10  (hospital1.bangalore@test.com … hospital10.bangalore@test.com)
+  donors    : 30  (donor1.bangalore@test.com … donor30.bangalore@test.com)
+  requests  : 260 open (50 no-match, 70 partial, 140 completed)
+  history   : 3 donation(s) per donor
+  sys donors: 120 (populate completed requests beyond donor budget)
+
+Kolkata
+  hospitals : 4  (hospital1.kolkata@test.com … hospital4.kolkata@test.com)
+  donors    : 30  (donor1.kolkata@test.com … donor30.kolkata@test.com)
+  requests  : 60 open (12 no-match, 16 partial, 32 completed) + 12 historical closed
+  history   : 2 donation(s) per donor
+
+Seed complete.

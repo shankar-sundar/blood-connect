@@ -16,6 +16,7 @@ type Donation = {
   id: string; created_at: string; status: 'donated' | 'rejected'
   blood_requests: { hospitals: { org_name: string } | null; created_at: string; blood_group: string } | null
 }
+type AcceptedRequest = Request & { acceptance_id: string }
 type ToastMsg = { id: number; message: string; type: 'success' | 'info' | 'warning' }
 
 const URGENCY_STYLES = {
@@ -29,13 +30,15 @@ const NAV = [
 ]
 
 export function DonorDashboardClient({
-  profile: initialProfile, requests: initialRequests, donations,
-}: { profile: Profile; requests: Request[]; donations: Donation[] }) {
+  profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, donations,
+}: { profile: Profile; requests: Request[]; acceptedRequests: AcceptedRequest[]; donations: Donation[] }) {
   const [profile, setProfile] = useState(initialProfile)
   const [requests, setRequests] = useState(initialRequests)
+  const [acceptedRequests, setAcceptedRequests] = useState(initialAccepted)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [toasts, setToasts] = useState<ToastMsg[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [unaccepting, setUnaccepting] = useState<string | null>(null)
 
   const addToast = useCallback((message: string, type: ToastMsg['type'] = 'info') => {
     const id = Date.now()
@@ -54,8 +57,20 @@ export function DonorDashboardClient({
     const res = await fetch('/api/donor/acceptances', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ request_id: id }) })
     setAccepting(null)
     if (!res.ok) { addToast('Could not accept request', 'warning'); return }
+    const data = await res.json()
+    const req = requests.find((r) => r.id === id)!
     setRequests((p) => p.filter((r) => r.id !== id))
-    addToast('Accepted. The hospital will contact you shortly.', 'success')
+    setAcceptedRequests((p) => [...p, { ...req, acceptance_id: data.acceptance_id }])
+  }
+
+  async function unacceptRequest(acceptanceId: string, requestId: string) {
+    setUnaccepting(acceptanceId)
+    const res = await fetch('/api/donor/acceptances', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acceptance_id: acceptanceId }) })
+    setUnaccepting(null)
+    if (!res.ok) { addToast('Could not withdraw acceptance', 'warning'); return }
+    const req = acceptedRequests.find((r) => r.acceptance_id === acceptanceId)!
+    setAcceptedRequests((p) => p.filter((r) => r.acceptance_id !== acceptanceId))
+    setRequests((p) => [...p, req])
   }
 
   const grouped = {
@@ -104,9 +119,9 @@ export function DonorDashboardClient({
             </div>
           ))}
           <div className="bg-white rounded-2xl border border-[#e5e5ea] p-5">
-            <p className="text-xs text-[#86868b] mb-1">{daysLeft > 0 ? 'Days to Eligible' : 'Status'}</p>
-            <p className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{daysLeft > 0 ? `${daysLeft}d` : 'Ready'}</p>
-            {eligibleDate && (
+            <p className="text-xs text-[#86868b] mb-1">Eligible to Donate</p>
+            <p className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{daysLeft > 0 ? `In ${daysLeft}d` : 'Yes'}</p>
+            {daysLeft > 0 && eligibleDate && (
               <p className="text-xs text-[#86868b] mt-1">
                 {eligibleDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
@@ -115,6 +130,38 @@ export function DonorDashboardClient({
         </div>
 
         <div className="grid lg:grid-cols-3 gap-5">
+          {/* Accepted requests */}
+          {acceptedRequests.length > 0 && (
+            <div className="lg:col-span-2 space-y-3">
+              <h2 className="text-sm font-semibold text-[#1d1d1f] px-1">Upcoming Donation</h2>
+              <div className="bg-white rounded-2xl border border-[#e5e5ea] divide-y divide-[#f5f5f7]">
+                {acceptedRequests.map((req) => (
+                  <div key={req.acceptance_id} className="px-5 py-4 flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-[#1d1d1f]">{req.blood_group}</span>
+                        <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
+                      </div>
+                      <p className="text-sm text-[#6e6e73] truncate">{req.hospitals?.org_name}</p>
+                      <p className="text-xs text-[#aeaeb2]">{req.hospitals?.city}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-100 px-2.5 py-0.5 rounded-full">Accepted</span>
+                      <button
+                        onClick={() => unacceptRequest(req.acceptance_id, req.id)}
+                        disabled={unaccepting === req.acceptance_id}
+                        className="text-xs font-medium text-[#86868b] border border-[#e5e5ea] px-3 py-1.5 rounded-full hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors disabled:opacity-40"
+                      >
+                        {unaccepting === req.acceptance_id ? '…' : 'Withdraw'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Requests */}
           <div className="lg:col-span-2 space-y-3">
             <h2 className="text-sm font-semibold text-[#1d1d1f] px-1">Nearby Requests</h2>
@@ -160,9 +207,9 @@ export function DonorDashboardClient({
                                 </span>
                                 <button
                                   onClick={() => acceptRequest(req.id)}
-                                  disabled={accepting === req.id || !profile.available || daysLeft > 0}
+                                  disabled={accepting === req.id || !profile.available || daysLeft > 0 || acceptedRequests.length > 0}
                                   className="text-xs font-medium bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full transition-colors disabled:opacity-40"
-                                  title={daysLeft > 0 ? `Eligible in ${daysLeft} days` : undefined}
+                                  title={acceptedRequests.length > 0 ? 'Withdraw your current acceptance first' : daysLeft > 0 ? `Eligible in ${daysLeft} days` : undefined}
                                 >
                                   {accepting === req.id ? '…' : 'Accept'}
                                 </button>

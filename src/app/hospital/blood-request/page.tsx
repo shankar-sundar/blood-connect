@@ -26,6 +26,7 @@ export default function BloodRequestPage() {
         units: parseInt(fd.get('units') as string),
         component: fd.get('component'),
         urgency: fd.get('urgency'),
+        patient_name: fd.get('patient_name'),
         description: fd.get('description'),
       }),
     })
@@ -58,6 +59,17 @@ export default function BloodRequestPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#e5e5ea] shadow-sm p-6 space-y-5">
           {error && <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 text-center">{error}</div>}
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-[#1d1d1f] mb-1.5">Patient name</p>
+              <input name="patient_name" type="text" required placeholder="Full name" className={inputCls} />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[#1d1d1f] mb-1.5">Description</p>
+              <input name="description" type="text" required placeholder="Condition, ward, instructions…" className={inputCls} />
+            </div>
+          </div>
 
           <div>
             <p className="text-xs font-medium text-[#1d1d1f] mb-2">Blood group needed</p>
@@ -112,11 +124,6 @@ export default function BloodRequestPage() {
                 {COMPONENTS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-[#1d1d1f] mb-1.5">Description</p>
-            <textarea name="description" rows={3} required placeholder="Patient condition, ward, special instructions…" className={`${inputCls} resize-none`} />
           </div>
 
           <button type="submit" disabled={submitting} className="w-full bg-[#0071e3] hover:bg-[#0077ed] text-white py-3 rounded-xl font-medium text-sm transition-colors disabled:opacity-50">

@@ -7,7 +7,7 @@ import Toast from '@/components/shared/toast'
 
 type Profile = { id: string; org_name: string; org_type: string; city: string }
 type Acceptance = { id: string; status: 'pending' | 'accepted' | 'donated' | 'rejected'; donor: { first_name: string; last_name: string; mobile: string } | null }
-type BloodRequest = { id: string; blood_group: string; units: number; component: string; urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string; status: string; created_at: string; acceptances: Acceptance[] }
+type BloodRequest = { id: string; blood_group: string; units: number; component: string; urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string; patient_name: string | null; status: string; created_at: string; acceptances: Acceptance[] }
 type ToastMsg = { id: number; message: string; type: 'success' | 'info' | 'warning' }
 
 const URGENCY_STYLES = {
@@ -62,9 +62,9 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
   }
 
   const grouped = {
-    pending: requests.filter((r) => reqCategory(r) === 'pending'),
-    partial: requests.filter((r) => reqCategory(r) === 'partial'),
-    completed: requests.filter((r) => reqCategory(r) === 'completed'),
+    pending: requests.filter((r) => reqCategory(r) === 'pending').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    partial: requests.filter((r) => reqCategory(r) === 'partial').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    completed: requests.filter((r) => reqCategory(r) === 'completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
   }
 
   const stats = {
@@ -144,18 +144,21 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                           <div className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-[#fafafa] transition-colors" onClick={() => setExpanded(isOpen ? null : req.id)}>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-[#1d1d1f]">{req.blood_group}</span>
+                                {req.patient_name && <span className="text-sm font-semibold text-[#1d1d1f]">{req.patient_name}</span>}
+                                <span className="text-sm text-[#86868b]">({req.blood_group})</span>
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
-                                <span className="text-sm text-[#86868b]">{req.units}u · {req.component}</span>
                               </div>
                               <p className="text-xs text-[#86868b] mt-0.5 truncate">{req.description}</p>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex flex-col items-center gap-1 shrink-0">
+                              <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                              <div className="flex items-center gap-2">
                               <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-2.5 py-0.5 rounded-full">{rejectedCount} rejected</span>
                               <span className="text-xs text-green-700 bg-[#f0fdf4] border border-green-100 px-2.5 py-0.5 rounded-full">{matchedCount} matched</span>
                               <span className="text-xs text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">{collectedCount}/{req.units} collected</span>
                               <span className="text-xs text-[#aeaeb2]">{new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                               <span className={`text-[#aeaeb2] text-xs transition-transform inline-block ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                              </div>
                             </div>
                           </div>
 

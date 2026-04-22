@@ -37,13 +37,13 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { blood_group, units, component, urgency, description } = await req.json()
+  const { blood_group, units, component, urgency, description, patient_name } = await req.json()
   const urgency_rank = ({ critical: 1, urgent: 2, scheduled: 3 } as Record<string, number>)[urgency] ?? 3
 
   await query(
-    `INSERT INTO blood_requests (hospital_id, blood_group, units, component, urgency, urgency_rank, description, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'open')`,
-    [session.id, blood_group, units, component, urgency, urgency_rank, description]
+    `INSERT INTO blood_requests (hospital_id, blood_group, units, component, urgency, urgency_rank, description, patient_name, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open')`,
+    [session.id, blood_group, units, component, urgency, urgency_rank, description, patient_name]
   )
   return NextResponse.json({ ok: true })
 }

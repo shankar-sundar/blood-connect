@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Check, X } from 'lucide-react'
+import { Check, X, Search } from 'lucide-react'
 import Toast from '@/components/shared/toast'
 
 type Profile = { id: string; org_name: string; org_type: string; city: string }
@@ -20,6 +20,9 @@ const DONATED_COMMENT = 'Thank you for your generous donation. Your contribution
 
 export function HospitalDashboardClient({ profile, requests: initialRequests }: { profile: Profile; requests: BloodRequest[] }) {
   const [requests, setRequests] = useState(initialRequests)
+  const [search, setSearch] = useState('')
+  const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set(['pending', 'partial']))
+  const [hintOpen, setHintOpen] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [toasts, setToasts] = useState<ToastMsg[]>([])
@@ -61,17 +64,22 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
     return 'pending'
   }
 
+  const searchTerm = search.trim().toLowerCase()
+  const visibleRequests = searchTerm
+    ? requests.filter((r) => filterCategories.has(reqCategory(r)) && r.patient_name?.toLowerCase().includes(searchTerm))
+    : requests
+
   const grouped = {
-    pending: requests.filter((r) => reqCategory(r) === 'pending').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    partial: requests.filter((r) => reqCategory(r) === 'partial').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    completed: requests.filter((r) => reqCategory(r) === 'completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    pending: visibleRequests.filter((r) => reqCategory(r) === 'pending').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    partial: visibleRequests.filter((r) => reqCategory(r) === 'partial').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    completed: visibleRequests.filter((r) => reqCategory(r) === 'completed').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
   }
 
   const stats = {
     total: requests.length,
-    pending: grouped.pending.length,
-    partial: grouped.partial.length,
-    completed: grouped.completed.length,
+    pending: requests.filter((r) => reqCategory(r) === 'pending').length,
+    partial: requests.filter((r) => reqCategory(r) === 'partial').length,
+    completed: requests.filter((r) => reqCategory(r) === 'completed').length,
   }
 
   return (
@@ -110,6 +118,42 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
           </div>
         </div>
 
+        <div className="bg-white border border-[#e5e5ea] rounded-xl focus-within:ring-2 focus-within:ring-[#0071e3]/30 focus-within:border-[#0071e3] mb-4">
+          <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-2 border-b border-[#f5f5f7]">
+            {([
+              { key: 'pending', label: 'Pending', activeCls: 'bg-[#1d1d1f] text-white border-[#1d1d1f]' },
+              { key: 'partial', label: 'Partial', activeCls: 'bg-orange-500 text-white border-orange-500' },
+              { key: 'completed', label: 'Completed', activeCls: 'bg-green-600 text-white border-green-600' },
+            ] as const).map(({ key, label, activeCls }) => {
+              const active = filterCategories.has(key)
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilterCategories((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })}
+                  className={`text-xs font-medium px-2.5 py-0.5 rounded-full border transition-colors ${active ? activeCls : 'bg-[#f5f5f7] text-[#86868b] border-[#e5e5ea] hover:border-[#aeaeb2]'}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <Search size={14} className="text-[#aeaeb2] shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by patient name…"
+              className="flex-1 min-w-0 text-sm text-[#1d1d1f] bg-transparent focus:outline-none placeholder:text-[#aeaeb2]"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[#aeaeb2] hover:text-[#86868b] shrink-0">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {requests.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#e5e5ea] py-16 text-center">
             <p className="text-sm text-[#86868b] mb-4">No active requests.</p>
@@ -117,19 +161,36 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
               Post your first request
             </Link>
           </div>
+        ) : visibleRequests.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#e5e5ea] py-12 text-center">
+            <p className="text-sm text-[#86868b]">No requests match &ldquo;{search}&rdquo;.</p>
+          </div>
         ) : (
           <div className="space-y-4">
             {([
-              { key: 'pending' as const, label: 'Pending', labelCls: 'text-[#86868b]', headerCls: 'border-[#e5e5ea]' },
-              { key: 'partial' as const, label: 'Partial', labelCls: 'text-orange-600', headerCls: 'border-orange-100' },
-              { key: 'completed' as const, label: 'Completed', labelCls: 'text-green-600', headerCls: 'border-green-100' },
-            ]).map(({ key, label, labelCls, headerCls }) => {
+              { key: 'pending' as const, label: 'Pending', hint: 'No units collected yet', labelCls: 'text-[#86868b]', hintCls: 'text-[#aeaeb2]', headerCls: 'border-[#e5e5ea]' },
+              { key: 'partial' as const, label: 'Partial', hint: 'Some units collected, still needs more donors', labelCls: 'text-orange-600', hintCls: 'text-orange-400', headerCls: 'border-orange-100' },
+              { key: 'completed' as const, label: 'Completed', hint: 'All required units have been collected', labelCls: 'text-green-600', hintCls: 'text-green-400', headerCls: 'border-green-100' },
+            ]).map(({ key, label, hint, labelCls, hintCls, headerCls }) => {
               const group = grouped[key]
               if (group.length === 0) return null
               return (
                 <div key={key} className="bg-white rounded-2xl border border-[#e5e5ea]">
                   <div className={`px-5 py-3 border-b ${headerCls} flex items-center gap-2 cursor-pointer select-none`} onClick={() => setCollapsed((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })}>
                     <h2 className={`text-xs font-semibold uppercase tracking-wider ${labelCls}`}>{label}</h2>
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setHintOpen(hintOpen === key ? null : key)}
+                        className={`w-4 h-4 rounded-full border text-[10px] font-semibold flex items-center justify-center transition-colors ${hintOpen === key ? `${labelCls} border-current` : 'text-[#aeaeb2] border-[#d2d2d7] hover:border-[#aeaeb2]'}`}
+                      >
+                        ?
+                      </button>
+                      {hintOpen === key && (
+                        <div className={`absolute left-0 top-6 z-10 whitespace-nowrap text-xs px-3 py-2 rounded-xl border shadow-sm ${labelCls} bg-white border-[#e5e5ea]`}>
+                          {hint}
+                        </div>
+                      )}
+                    </div>
                     <span className={`text-xs font-medium ${labelCls} opacity-60`}>{group.length}</span>
                     <span className={`ml-auto text-[#aeaeb2] text-xs transition-transform inline-block ${collapsed.has(key) ? '' : 'rotate-180'}`}>▼</span>
                   </div>

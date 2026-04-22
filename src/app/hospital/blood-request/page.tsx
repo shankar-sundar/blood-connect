@@ -119,7 +119,7 @@ export default function BloodRequestPage() {
             </div>
             <div>
               <p className="text-xs font-medium text-[#1d1d1f] mb-1.5">Component</p>
-              <select name="component" required className={`${inputCls} bg-[#f5f5f7]`}>
+              <select name="component" required className={`${inputCls} appearance-none`}>
                 <option value="">Select</option>
                 {COMPONENTS.map((c) => <option key={c}>{c}</option>)}
               </select>

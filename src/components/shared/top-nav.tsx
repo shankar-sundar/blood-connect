@@ -5,7 +5,7 @@ import { SignOutButton } from './sign-out-button'
 
 export async function TopNav() {
   const session = await getSession()
-  const dashboardHref = session?.role === 'hospital' ? '/hospital/dashboard' : '/donor/dashboard'
+  const dashboardHref = session?.role === 'hospital' ? '/hospital/dashboard' : session?.role === 'admin' ? '/admin/dashboard' : '/donor/dashboard'
 
   let profile: { display_name: string; city: string } | null = null
   if (session) {

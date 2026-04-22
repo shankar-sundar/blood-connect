@@ -44,7 +44,8 @@ export default function SignInPage() {
     setPending(false)
 
     if (!res.ok) { setError(data.error ?? 'Sign in failed'); return }
-    router.push(data.role === 'hospital' ? '/hospital/dashboard' : '/donor/dashboard')
+    const dest = data.role === 'hospital' ? '/hospital/dashboard' : data.role === 'admin' ? '/admin/dashboard' : '/donor/dashboard'
+    router.push(dest)
   }
 
   async function fillDemo(demoEmail: string) {

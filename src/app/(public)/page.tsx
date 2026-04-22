@@ -4,7 +4,7 @@ import { getSession } from '@/lib/session'
 export default async function HomePage() {
   const session = await getSession()
   const loggedIn = !!session
-  const dashboardHref = session?.role === 'hospital' ? '/hospital/dashboard' : '/donor/dashboard'
+  const dashboardHref = session?.role === 'hospital' ? '/hospital/dashboard' : session?.role === 'admin' ? '/admin/dashboard' : '/donor/dashboard'
 
   return (
     <div className="bg-[#1d1d1f] text-white">

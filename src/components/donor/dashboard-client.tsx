@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react'
 import { Flame, Clock, CalendarCheck } from 'lucide-react'
 import { livesSaved, daysUntilEligible, nextEligibleDate } from '@/lib/donor-stats'
-import SidebarLayout from '@/components/shared/sidebar-layout'
 import Toast from '@/components/shared/toast'
 
 type Profile = { id: string; first_name: string; last_name: string; blood_group: string; city: string; available: boolean }
@@ -24,10 +23,6 @@ const URGENCY_STYLES = {
   urgent: 'bg-orange-50 text-orange-600 border border-orange-100',
   scheduled: 'bg-blue-50 text-blue-600 border border-blue-100',
 }
-
-const NAV = [
-  { label: 'Dashboard', href: '/donor/dashboard' },
-]
 
 export function DonorDashboardClient({
   profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, donations,
@@ -84,12 +79,12 @@ export function DonorDashboardClient({
   const donatedCount = donations.filter((d) => d.status === 'donated').length
 
   return (
-    <SidebarLayout navItems={NAV} orgName={`${profile.first_name} ${profile.last_name}`} role="donor">
+    <div className="min-h-screen bg-[#f5f5f7]">
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80">
         {toasts.map((t) => <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts((p) => p.filter((x) => x.id !== t.id))} />)}
       </div>
 
-      <div className="p-8 max-w-5xl">
+      <div className="p-8 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
@@ -257,6 +252,6 @@ export function DonorDashboardClient({
           </div>
         </div>
       </div>
-    </SidebarLayout>
+    </div>
   )
 }

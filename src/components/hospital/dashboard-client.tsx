@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Check, X } from 'lucide-react'
-import SidebarLayout from '@/components/shared/sidebar-layout'
 import Toast from '@/components/shared/toast'
 
 type Profile = { id: string; org_name: string; org_type: string; city: string }
@@ -16,10 +15,6 @@ const URGENCY_STYLES = {
   urgent: 'bg-orange-50 text-orange-600 border border-orange-100',
   scheduled: 'bg-blue-50 text-blue-600 border border-blue-100',
 }
-
-const NAV = [
-  { label: 'Dashboard', href: '/hospital/dashboard' },
-]
 
 const DONATED_COMMENT = 'Thank you for your generous donation. Your contribution is truly lifesaving and deeply appreciated by our team and the patients you have helped.'
 
@@ -80,12 +75,12 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
   }
 
   return (
-    <SidebarLayout navItems={NAV} orgName={profile.org_name} role="hospital">
+    <div className="min-h-screen bg-[#f5f5f7]">
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80">
         {toasts.map((t) => <Toast key={t.id} message={t.message} type={t.type} onClose={() => setToasts((p) => p.filter((x) => x.id !== t.id))} />)}
       </div>
 
-      <div className="p-8 max-w-4xl">
+      <div className="p-8 max-w-4xl mx-auto">
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{profile.org_name}</h1>
@@ -229,6 +224,6 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
           </div>
         </div>
       )}
-    </SidebarLayout>
+    </div>
   )
 }

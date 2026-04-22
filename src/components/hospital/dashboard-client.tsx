@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Check, X, Search } from 'lucide-react'
 import Toast from '@/components/shared/toast'
@@ -23,6 +23,18 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
   const [search, setSearch] = useState('')
   const [filterCategories, setFilterCategories] = useState<Set<string>>(new Set(['pending', 'partial']))
   const [hintOpen, setHintOpen] = useState<string | null>(null)
+  const hintRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!hintOpen) return
+    function handleClick(e: MouseEvent) {
+      if (hintRef.current && !hintRef.current.contains(e.target as Node)) {
+        setHintOpen(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [hintOpen])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [toasts, setToasts] = useState<ToastMsg[]>([])
@@ -178,7 +190,7 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                 <div key={key} className="bg-white rounded-2xl border border-[#e5e5ea]">
                   <div className={`px-5 py-3 border-b ${headerCls} flex items-center gap-2 cursor-pointer select-none`} onClick={() => setCollapsed((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n })}>
                     <h2 className={`text-xs font-semibold uppercase tracking-wider ${labelCls}`}>{label}</h2>
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <div ref={hintOpen === key ? hintRef : null} className="relative" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setHintOpen(hintOpen === key ? null : key)}
                         className={`w-4 h-4 rounded-full border text-[10px] font-semibold flex items-center justify-center transition-colors ${hintOpen === key ? `${labelCls} border-current` : 'text-[#aeaeb2] border-[#d2d2d7] hover:border-[#aeaeb2]'}`}

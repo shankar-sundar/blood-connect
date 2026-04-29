@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Flame, Clock, CalendarCheck } from 'lucide-react'
+import { Flame, Clock, CalendarCheck, UserPlus, Copy, Check as CheckIcon } from 'lucide-react'
 import { livesSaved, daysUntilEligible, nextEligibleDate } from '@/lib/donor-stats'
 import Toast from '@/components/shared/toast'
 
@@ -10,6 +10,12 @@ type Request = {
   id: string; blood_group: string; units: number; component: string
   urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string
   created_at: string; hospitals: { org_name: string; address: string; city: string } | null
+}
+type AttenderRequest = {
+  id: string; blood_group: string; units: number; component: string
+  urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number
+  description: string; patient_name: string | null; created_at: string
+  hospitals: { org_name: string; address: string; city: string } | null
 }
 type Donation = {
   id: string; created_at: string; status: 'donated' | 'rejected'
@@ -25,8 +31,8 @@ const URGENCY_STYLES = {
 }
 
 export function DonorDashboardClient({
-  profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, donations,
-}: { profile: Profile; requests: Request[]; acceptedRequests: AcceptedRequest[]; donations: Donation[] }) {
+  profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, attenderRequests, donations,
+}: { profile: Profile; requests: Request[]; acceptedRequests: AcceptedRequest[]; attenderRequests: AttenderRequest[]; donations: Donation[] }) {
   const [profile, setProfile] = useState(initialProfile)
   const [requests, setRequests] = useState(initialRequests)
   const [acceptedRequests, setAcceptedRequests] = useState(initialAccepted)
@@ -34,6 +40,14 @@ export function DonorDashboardClient({
   const [toasts, setToasts] = useState<ToastMsg[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
   const [unaccepting, setUnaccepting] = useState<string | null>(null)
+  const [idCopied, setIdCopied] = useState(false)
+
+  function copyDonorId() {
+    navigator.clipboard.writeText(profile.id).then(() => {
+      setIdCopied(true)
+      setTimeout(() => setIdCopied(false), 2000)
+    })
+  }
 
   const addToast = useCallback((message: string, type: ToastMsg['type'] = 'info') => {
     const id = Date.now()
@@ -90,6 +104,16 @@ export function DonorDashboardClient({
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">Good morning, {profile.first_name}.</h1>
             <p className="text-sm text-[#86868b] mt-0.5">{profile.city}</p>
+            <button
+              onClick={copyDonorId}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#aeaeb2] hover:text-[#86868b] transition-colors group"
+              title="Copy your donor ID to share with hospitals"
+            >
+              <span className="font-mono">ID: {profile.id.slice(0, 8)}…</span>
+              {idCopied
+                ? <CheckIcon size={11} className="text-green-500" />
+                : <Copy size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
+            </button>
           </div>
           <button onClick={toggleAvailability} className="flex items-center gap-2.5 group" aria-label="Toggle availability">
             <span className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${profile.available ? 'bg-green-500' : 'bg-[#d2d2d7]'}`}>
@@ -123,6 +147,33 @@ export function DonorDashboardClient({
             )}
           </div>
         </div>
+
+        {/* Attender assignment */}
+        {attenderRequests.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold text-[#1d1d1f] px-1 mb-3 flex items-center gap-1.5">
+              <UserPlus size={14} className="text-purple-500" />
+              Assigned as Attender
+            </h2>
+            <div className="bg-white rounded-2xl border border-purple-100 divide-y divide-[#f5f5f7]">
+              {attenderRequests.map((req) => (
+                <div key={req.id} className="px-5 py-4 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {req.patient_name && <span className="text-sm font-semibold text-[#1d1d1f]">{req.patient_name}</span>}
+                      <span className="text-sm font-semibold text-[#1d1d1f]">{req.blood_group}</span>
+                      <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
+                    </div>
+                    <p className="text-sm text-[#6e6e73] truncate">{req.hospitals?.org_name}</p>
+                    <p className="text-xs text-[#aeaeb2]">{req.hospitals?.city}</p>
+                  </div>
+                  <span className="text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full shrink-0">Attender</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-5">
           {/* Accepted requests */}

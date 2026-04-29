@@ -52,6 +52,8 @@ create table if not exists public.blood_requests (
   urgency       text not null check (urgency in ('critical','urgent','scheduled')),
   urgency_rank  integer not null check (urgency_rank in (1,2,3)),
   description   text not null,
+  patient_name  text,
+  attender_id   uuid references public.profiles(id),
   status        text not null default 'open' check (status in ('open','closed','cancelled')),
   created_at    timestamptz not null default now()
 );
@@ -61,6 +63,7 @@ create table if not exists public.acceptances (
   request_id    uuid not null references public.blood_requests(id) on delete cascade,
   donor_id      uuid not null references public.profiles(id) on delete cascade,
   status        text not null default 'pending' check (status in ('pending','accepted','donated','rejected')),
+  comment       text,
   created_at    timestamptz not null default now(),
 
   unique (request_id, donor_id)
@@ -85,3 +88,6 @@ create index if not exists idx_acceptances_request_id
 
 create index if not exists idx_profiles_email
   on public.profiles(email);
+
+create index if not exists idx_blood_requests_attender_id
+  on public.blood_requests(attender_id);

@@ -16,7 +16,7 @@ export default async function DonorDashboardPage() {
   )
   if (!profile) redirect('/register')
 
-  const [requests, acceptedRequests] = await Promise.all([
+  const [requests, acceptedRequests, attenderRequests] = await Promise.all([
     query(
       `SELECT br.id, br.blood_group, br.units, br.component, br.urgency, br.urgency_rank,
               br.description, br.created_at,
@@ -43,6 +43,16 @@ export default async function DonorDashboardPage() {
        ORDER BY br.urgency_rank ASC, br.created_at DESC`,
       [session.id]
     ),
+    query(
+      `SELECT br.id, br.blood_group, br.units, br.component, br.urgency, br.urgency_rank,
+              br.description, br.patient_name, br.created_at,
+              json_build_object('org_name', p.org_name, 'address', p.address, 'city', p.city) AS hospitals
+       FROM blood_requests br
+       JOIN profiles p ON p.id = br.hospital_id
+       WHERE br.attender_id = $1 AND br.status = 'open'
+       ORDER BY br.urgency_rank ASC, br.created_at DESC`,
+      [session.id]
+    ),
   ])
 
   const donations = await query(
@@ -60,5 +70,5 @@ export default async function DonorDashboardPage() {
     [session.id]
   )
 
-  return <DonorDashboardClient profile={profile} requests={requests as any} acceptedRequests={acceptedRequests as any} donations={donations as any} />
+  return <DonorDashboardClient profile={profile} requests={requests as any} acceptedRequests={acceptedRequests as any} attenderRequests={attenderRequests as any} donations={donations as any} />
 }

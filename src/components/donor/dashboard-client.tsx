@@ -159,16 +159,19 @@ export function DonorDashboardClient({
               {attenderRequests.map((req) => (
                 <div key={req.id} className="px-5 py-4 flex items-center gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-3 mb-0.5">
                       {req.patient_name && <span className="text-sm font-semibold text-[#1d1d1f]">{req.patient_name}</span>}
-                      <span className="text-sm font-semibold text-[#1d1d1f]">{req.blood_group}</span>
-                      <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                      <span className="text-sm text-[#86868b]">({req.blood_group})</span>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
                     </div>
-                    <p className="text-sm text-[#6e6e73] truncate">{req.hospitals?.org_name}</p>
-                    <p className="text-xs text-[#aeaeb2]">{req.hospitals?.city}</p>
+                    <p className="text-xs text-[#86868b] mt-0.5 truncate">{req.description}</p>
+                    <p className="text-xs text-[#aeaeb2] mt-0.5">{req.hospitals?.org_name}{req.hospitals?.city ? ` · ${req.hospitals.city}` : ''}</p>
                   </div>
-                  <span className="text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full shrink-0">Attender</span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                    <span className="text-xs text-[#aeaeb2]">{new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2.5 py-0.5 rounded-full">Attender</span>
+                  </div>
                 </div>
               ))}
             </div>

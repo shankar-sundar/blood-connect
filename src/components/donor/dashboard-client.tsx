@@ -204,9 +204,9 @@ export function DonorDashboardClient({
                                   </div>
                                 </div>
                                 <div>
-                                  {acc.status === 'accepted' && <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">Accepted</span>}
+                                  {acc.status === 'accepted' && <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">Accepted</span>}
                                   {acc.status === 'pending' && <span className="text-xs font-medium text-[#86868b] bg-[#f5f5f7] border border-[#e5e5ea] px-2.5 py-1 rounded-full">Pending</span>}
-                                  {acc.status === 'donated' && <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">Donated</span>}
+                                  {acc.status === 'donated' && <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">Donated</span>}
                                   {acc.status === 'rejected' && <span className="text-xs font-medium text-red-500 bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">Rejected</span>}
                                 </div>
                               </div>

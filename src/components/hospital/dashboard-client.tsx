@@ -48,6 +48,7 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
   const [attenderResults, setAttenderResults] = useState<Record<string, DonorResult[] | null>>({})
   const [attenderSearching, setAttenderSearching] = useState<string | null>(null)
   const [attenderAssigning, setAttenderAssigning] = useState<string | null>(null)
+  const attenderDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const addToast = useCallback((message: string, type: ToastMsg['type'] = 'info') => {
     const id = Date.now()
@@ -76,8 +77,7 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
     setRejectComment('')
   }
 
-  async function searchAttender(reqId: string) {
-    const q = attenderSearch[reqId]?.trim()
+  async function searchAttender(reqId: string, q: string) {
     if (!q) return
     setAttenderSearching(reqId)
     try {
@@ -344,27 +344,32 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                                     </div>
                                   ) : (
                                     <div className="space-y-2">
-                                      <div className="flex gap-2">
+                                      <div className="relative">
                                         <input
                                           type="text"
                                           value={attenderSearch[req.id] ?? ''}
                                           onChange={(e) => {
-                                            setAttenderSearch((p) => ({ ...p, [req.id]: e.target.value }))
-                                            if (attenderResults[req.id] !== undefined) {
+                                            const val = e.target.value
+                                            setAttenderSearch((p) => ({ ...p, [req.id]: val }))
+                                            clearTimeout(attenderDebounce.current[req.id])
+                                            if (val.trim().length >= 5) {
+                                              attenderDebounce.current[req.id] = setTimeout(() => searchAttender(req.id, val.trim()), 300)
+                                            } else {
                                               setAttenderResults((p) => ({ ...p, [req.id]: null }))
                                             }
                                           }}
-                                          onKeyDown={(e) => e.key === 'Enter' && searchAttender(req.id)}
-                                          placeholder="Search by name or donor ID…"
-                                          className="flex-1 text-xs text-[#1d1d1f] border border-[#e5e5ea] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] bg-white"
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              clearTimeout(attenderDebounce.current[req.id])
+                                              searchAttender(req.id, (attenderSearch[req.id] ?? '').trim())
+                                            }
+                                          }}
+                                          placeholder="Type 5+ letters to search by name or donor ID…"
+                                          className="w-full text-xs text-[#1d1d1f] border border-[#e5e5ea] rounded-lg px-3 py-2 pr-7 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] bg-white"
                                         />
-                                        <button
-                                          onClick={() => searchAttender(req.id)}
-                                          disabled={attenderSearching === req.id || !attenderSearch[req.id]?.trim()}
-                                          className="text-xs font-medium bg-[#0071e3] text-white px-3 py-2 rounded-lg hover:bg-[#0077ed] transition-colors disabled:opacity-40"
-                                        >
-                                          {attenderSearching === req.id ? '…' : 'Find'}
-                                        </button>
+                                        {attenderSearching === req.id && (
+                                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#aeaeb2]">…</span>
+                                        )}
                                       </div>
                                       {hasSearched && results!.length > 0 && (
                                         <div className="space-y-1">

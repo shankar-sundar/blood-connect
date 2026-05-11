@@ -29,7 +29,12 @@ export default async function HospitalDashboardPage() {
            )
          ) FILTER (WHERE a.id IS NOT NULL),
          '[]'
-       ) AS acceptances
+       ) AS acceptances,
+       (
+         SELECT json_build_object('id', att.id, 'first_name', att.first_name, 'last_name', att.last_name)
+         FROM profiles att
+         WHERE att.id = br.attender_id
+       ) AS attender
      FROM blood_requests br
      LEFT JOIN acceptances a ON a.request_id = br.id
      LEFT JOIN profiles p ON p.id = a.donor_id

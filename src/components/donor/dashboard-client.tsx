@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Flame, Clock, CalendarCheck } from 'lucide-react'
+import { Flame, Clock, CalendarCheck, UserPlus, Copy, Check as CheckIcon } from 'lucide-react'
 import { livesSaved, daysUntilEligible, nextEligibleDate } from '@/lib/donor-stats'
 import Toast from '@/components/shared/toast'
 
@@ -10,6 +10,14 @@ type Request = {
   id: string; blood_group: string; units: number; component: string
   urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string
   created_at: string; hospitals: { org_name: string; address: string; city: string } | null
+}
+type AttenderAcceptance = { id: string; status: 'pending' | 'accepted' | 'donated' | 'rejected'; donor: { first_name: string; last_name: string; mobile: string } | null }
+type AttenderRequest = {
+  id: string; blood_group: string; units: number; component: string
+  urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number
+  description: string; patient_name: string | null; created_at: string
+  hospitals: { org_name: string; address: string; city: string } | null
+  acceptances: AttenderAcceptance[]
 }
 type Donation = {
   id: string; created_at: string; status: 'donated' | 'rejected'
@@ -25,8 +33,8 @@ const URGENCY_STYLES = {
 }
 
 export function DonorDashboardClient({
-  profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, donations,
-}: { profile: Profile; requests: Request[]; acceptedRequests: AcceptedRequest[]; donations: Donation[] }) {
+  profile: initialProfile, requests: initialRequests, acceptedRequests: initialAccepted, attenderRequests, donations,
+}: { profile: Profile; requests: Request[]; acceptedRequests: AcceptedRequest[]; attenderRequests: AttenderRequest[]; donations: Donation[] }) {
   const [profile, setProfile] = useState(initialProfile)
   const [requests, setRequests] = useState(initialRequests)
   const [acceptedRequests, setAcceptedRequests] = useState(initialAccepted)
@@ -34,6 +42,15 @@ export function DonorDashboardClient({
   const [toasts, setToasts] = useState<ToastMsg[]>([])
   const [accepting, setAccepting] = useState<string | null>(null)
   const [unaccepting, setUnaccepting] = useState<string | null>(null)
+  const [idCopied, setIdCopied] = useState(false)
+  const [attenderExpanded, setAttenderExpanded] = useState<string | null>(null)
+
+  function copyDonorId() {
+    navigator.clipboard.writeText(profile.id).then(() => {
+      setIdCopied(true)
+      setTimeout(() => setIdCopied(false), 2000)
+    })
+  }
 
   const addToast = useCallback((message: string, type: ToastMsg['type'] = 'info') => {
     const id = Date.now()
@@ -90,6 +107,16 @@ export function DonorDashboardClient({
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">Good morning, {profile.first_name}.</h1>
             <p className="text-sm text-[#86868b] mt-0.5">{profile.city}</p>
+            <button
+              onClick={copyDonorId}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#aeaeb2] hover:text-[#86868b] transition-colors group"
+              title="Copy your donor ID to share with hospitals"
+            >
+              <span className="font-mono">ID: {profile.id.slice(0, 8)}…</span>
+              {idCopied
+                ? <CheckIcon size={11} className="text-green-500" />
+                : <Copy size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
+            </button>
           </div>
           <button onClick={toggleAvailability} className="flex items-center gap-2.5 group" aria-label="Toggle availability">
             <span className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${profile.available ? 'bg-green-500' : 'bg-[#d2d2d7]'}`}>
@@ -123,6 +150,77 @@ export function DonorDashboardClient({
             )}
           </div>
         </div>
+
+        {/* Attender assignment */}
+        {attenderRequests.length > 0 && (
+          <div className="mb-5">
+            <h2 className="text-sm font-semibold text-[#1d1d1f] px-1 mb-3 flex items-center gap-1.5">
+              <UserPlus size={14} className="text-purple-500" />
+              Assigned as Attender
+            </h2>
+            <div className="bg-white rounded-2xl border border-purple-100 divide-y divide-[#f5f5f7]">
+              {attenderRequests.map((req) => {
+                const isOpen = attenderExpanded === req.id
+                const donatedCount = req.acceptances.filter((a) => a.status === 'donated').length
+                const matchedCount = req.acceptances.filter((a) => a.status === 'accepted').length
+                return (
+                  <div key={req.id}>
+                    <div className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-[#fafafa] transition-colors" onClick={() => setAttenderExpanded(isOpen ? null : req.id)}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-0.5">
+                          {req.patient_name && <span className="text-sm font-semibold text-[#1d1d1f]">{req.patient_name}</span>}
+                          <span className="text-sm text-[#86868b]">({req.blood_group})</span>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
+                        </div>
+                        <p className="text-xs text-[#86868b] mt-0.5 truncate">{req.description}</p>
+                        <p className="text-xs text-[#aeaeb2] mt-0.5">{req.hospitals?.org_name}{req.hospitals?.city ? ` · ${req.hospitals.city}` : ''}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-xs text-[#86868b]">{req.units}u · {req.component}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-green-700 bg-[#f0fdf4] border border-green-100 px-2.5 py-0.5 rounded-full">{matchedCount} matched</span>
+                          <span className="text-xs text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">{donatedCount}/{req.units} collected</span>
+                          <span className="text-xs text-[#aeaeb2]">{new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                          <span className={`text-[#aeaeb2] text-xs transition-transform inline-block ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isOpen && (
+                      <div className="px-5 pb-4 bg-[#fafafa] border-t border-[#f5f5f7]">
+                        {req.acceptances.length === 0 ? (
+                          <p className="text-xs text-[#aeaeb2] py-3">No donors yet.</p>
+                        ) : (
+                          <div className="space-y-2 pt-3">
+                            {req.acceptances.map((acc) => (
+                              <div key={acc.id} className="flex items-center justify-between gap-3 bg-white rounded-xl p-3 border border-[#e5e5ea]">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-7 h-7 bg-[#f5f5f7] rounded-full flex items-center justify-center text-xs font-semibold text-[#1d1d1f]">
+                                    {acc.donor?.first_name?.[0] ?? '?'}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-[#1d1d1f]">{acc.donor ? `${acc.donor.first_name} ${acc.donor.last_name}` : 'Unknown'}</p>
+                                    <p className="text-xs text-[#86868b]">{acc.donor?.mobile}</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  {acc.status === 'accepted' && <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">Accepted</span>}
+                                  {acc.status === 'pending' && <span className="text-xs font-medium text-[#86868b] bg-[#f5f5f7] border border-[#e5e5ea] px-2.5 py-1 rounded-full">Pending</span>}
+                                  {acc.status === 'donated' && <span className="text-xs font-medium text-green-600 bg-green-50 border border-green-100 px-2.5 py-1 rounded-full">Donated</span>}
+                                  {acc.status === 'rejected' && <span className="text-xs font-medium text-red-500 bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">Rejected</span>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-5">
           {/* Accepted requests */}

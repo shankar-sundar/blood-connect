@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Check, X, Search } from 'lucide-react'
+import { Check, X, Search, UserPlus } from 'lucide-react'
 import Toast from '@/components/shared/toast'
 
 type Profile = { id: string; org_name: string; org_type: string; city: string }
 type Acceptance = { id: string; status: 'pending' | 'accepted' | 'donated' | 'rejected'; donor: { first_name: string; last_name: string; mobile: string } | null }
-type BloodRequest = { id: string; blood_group: string; units: number; component: string; urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string; patient_name: string | null; status: string; created_at: string; acceptances: Acceptance[] }
+type Attender = { id: string; first_name: string; last_name: string }
+type DonorResult = { id: string; first_name: string; last_name: string; blood_group: string; city: string }
+type BloodRequest = { id: string; blood_group: string; units: number; component: string; urgency: 'critical' | 'urgent' | 'scheduled'; urgency_rank: number; description: string; patient_name: string | null; status: string; created_at: string; acceptances: Acceptance[]; attender: Attender | null }
 type ToastMsg = { id: number; message: string; type: 'success' | 'info' | 'warning' }
 
 const URGENCY_STYLES = {
@@ -42,6 +44,12 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
   const [rejectComment, setRejectComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const [attenderSearch, setAttenderSearch] = useState<Record<string, string>>({})
+  const [attenderResults, setAttenderResults] = useState<Record<string, DonorResult[] | null>>({})
+  const [attenderSearching, setAttenderSearching] = useState<string | null>(null)
+  const [attenderAssigning, setAttenderAssigning] = useState<string | null>(null)
+  const attenderDebounce = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
   const addToast = useCallback((message: string, type: ToastMsg['type'] = 'info') => {
     const id = Date.now()
     setToasts((p) => [...p, { id, message, type }])
@@ -67,6 +75,43 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
     setSubmitting(false)
     setRejectModal(null)
     setRejectComment('')
+  }
+
+  async function searchAttender(reqId: string, q: string) {
+    if (!q) return
+    setAttenderSearching(reqId)
+    try {
+      const res = await fetch(`/api/hospital/donors?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      setAttenderResults((p) => ({ ...p, [reqId]: Array.isArray(data) ? data : [] }))
+    } catch {
+      setAttenderResults((p) => ({ ...p, [reqId]: [] }))
+    }
+    setAttenderSearching(null)
+  }
+
+  async function assignAttender(reqId: string, donor: DonorResult | null) {
+    setAttenderAssigning(reqId)
+    const res = await fetch(`/api/hospital/requests/${reqId}/attender`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ donor_id: donor?.id ?? null }),
+    })
+    setAttenderAssigning(null)
+    if (!res.ok) {
+      const err = await res.json()
+      addToast(err.error ?? 'Could not update attender', 'warning')
+      return
+    }
+    if (donor) {
+      setRequests((p) => p.map((r) => r.id === reqId ? { ...r, attender: { id: donor.id, first_name: donor.first_name, last_name: donor.last_name } } : r))
+      setAttenderResults((p) => ({ ...p, [reqId]: null }))
+      setAttenderSearch((p) => ({ ...p, [reqId]: '' }))
+      addToast('Attender assigned', 'success')
+    } else {
+      setRequests((p) => p.map((r) => r.id === reqId ? { ...r, attender: null } : r))
+      addToast('Attender removed', 'info')
+    }
   }
 
   function reqCategory(req: BloodRequest): 'pending' | 'partial' | 'completed' {
@@ -212,6 +257,8 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                       const matchedCount = req.acceptances.filter((a) => a.status === 'accepted').length
                       const collectedCount = req.acceptances.filter((a) => a.status === 'donated').length
                       const isOpen = expanded === req.id
+                      const results = attenderResults[req.id]
+                      const hasSearched = results !== undefined && results !== null
                       return (
                         <div key={req.id}>
                           <div className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-[#fafafa] transition-colors" onClick={() => setExpanded(isOpen ? null : req.id)}>
@@ -220,6 +267,12 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                                 {req.patient_name && <span className="text-sm font-semibold text-[#1d1d1f]">{req.patient_name}</span>}
                                 <span className="text-sm text-[#86868b]">({req.blood_group})</span>
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${URGENCY_STYLES[req.urgency]}`}>{req.urgency}</span>
+                                {req.attender && (
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
+                                    <UserPlus size={10} />
+                                    Attender
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-[#86868b] mt-0.5 truncate">{req.description}</p>
                             </div>
@@ -264,6 +317,84 @@ export function HospitalDashboardClient({ profile, requests: initialRequests }: 
                                       </div>
                                     </div>
                                   ))}
+                                </div>
+                              )}
+
+                              {req.urgency !== 'scheduled' && (
+                                <div className="mt-3 pt-3 border-t border-[#f0f0f5]">
+                                  <p className="text-xs font-semibold text-[#86868b] mb-2 flex items-center gap-1.5">
+                                    <UserPlus size={11} />
+                                    Patient Attender
+                                  </p>
+                                  {req.attender ? (
+                                    <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-purple-100">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-7 h-7 bg-purple-50 rounded-full flex items-center justify-center text-xs font-semibold text-purple-600">
+                                          {req.attender.first_name[0]}
+                                        </div>
+                                        <p className="text-sm font-medium text-[#1d1d1f]">{req.attender.first_name} {req.attender.last_name}</p>
+                                      </div>
+                                      <button
+                                        onClick={() => assignAttender(req.id, null)}
+                                        disabled={attenderAssigning === req.id}
+                                        className="text-xs font-medium text-[#86868b] border border-[#e5e5ea] px-3 py-1.5 rounded-full hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors disabled:opacity-40"
+                                      >
+                                        {attenderAssigning === req.id ? '…' : 'Remove'}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <div className="relative">
+                                        <input
+                                          type="text"
+                                          value={attenderSearch[req.id] ?? ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value
+                                            setAttenderSearch((p) => ({ ...p, [req.id]: val }))
+                                            clearTimeout(attenderDebounce.current[req.id])
+                                            if (val.trim().length >= 5) {
+                                              attenderDebounce.current[req.id] = setTimeout(() => searchAttender(req.id, val.trim()), 300)
+                                            } else {
+                                              setAttenderResults((p) => ({ ...p, [req.id]: null }))
+                                            }
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              clearTimeout(attenderDebounce.current[req.id])
+                                              searchAttender(req.id, (attenderSearch[req.id] ?? '').trim())
+                                            }
+                                          }}
+                                          placeholder="Type 5+ letters to search by name or donor ID…"
+                                          className="w-full text-xs text-[#1d1d1f] border border-[#e5e5ea] rounded-lg px-3 py-2 pr-7 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/30 focus:border-[#0071e3] bg-white"
+                                        />
+                                        {attenderSearching === req.id && (
+                                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#aeaeb2]">…</span>
+                                        )}
+                                      </div>
+                                      {hasSearched && results!.length > 0 && (
+                                        <div className="space-y-1">
+                                          {results!.map((donor) => (
+                                            <div key={donor.id} className="flex items-center justify-between bg-white rounded-xl p-2.5 border border-[#e5e5ea]">
+                                              <div>
+                                                <p className="text-xs font-medium text-[#1d1d1f]">{donor.first_name} {donor.last_name}</p>
+                                                <p className="text-xs text-[#86868b]">{donor.blood_group} · {donor.city}</p>
+                                              </div>
+                                              <button
+                                                onClick={() => assignAttender(req.id, donor)}
+                                                disabled={attenderAssigning === req.id}
+                                                className="text-xs font-medium text-[#0071e3] border border-[#0071e3]/30 bg-[#f0f8ff] px-2.5 py-1 rounded-full hover:bg-[#0071e3]/10 transition-colors disabled:opacity-40"
+                                              >
+                                                {attenderAssigning === req.id ? '…' : 'Assign'}
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {hasSearched && results!.length === 0 && (
+                                        <p className="text-xs text-[#aeaeb2] px-1">No donor found.</p>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

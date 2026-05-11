@@ -69,3 +69,18 @@ ALTER TABLE acceptances ADD COLUMN IF NOT EXISTS comment text;
 
 **Applied:** pending  
 **Affects:** `src/app/api/hospital/requests/[id]/acceptances/route.ts`, `src/components/hospital/dashboard-client.tsx`
+
+---
+
+## M004 — Add `patient_name` and `attender_id` columns to `blood_requests`
+
+**Reason:** Patient attender workflow — each blood request can optionally record the patient's name and a designated donor who acts as the patient's attender.
+
+```sql
+ALTER TABLE blood_requests ADD COLUMN IF NOT EXISTS patient_name text;
+ALTER TABLE blood_requests ADD COLUMN IF NOT EXISTS attender_id uuid REFERENCES profiles(id);
+CREATE INDEX IF NOT EXISTS idx_blood_requests_attender_id ON blood_requests(attender_id);
+```
+
+**Applied:** pending  
+**Affects:** `src/app/hospital/blood-request/page.tsx`, `src/app/api/hospital/requests/route.ts`, `src/app/hospital/dashboard/page.tsx`, `src/components/hospital/dashboard-client.tsx`, `src/components/donor/dashboard-client.tsx`

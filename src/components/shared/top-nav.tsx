@@ -44,6 +44,7 @@ export async function TopNav() {
               <Link href="/sign-in" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors">Sign in</Link>
             </>
           )}
+          <Link href="/privacy" className="text-sm text-[#1d1d1f]/60 hover:text-[#1d1d1f] transition-colors">Privacy</Link>
         </div>
       </div>
     </nav>

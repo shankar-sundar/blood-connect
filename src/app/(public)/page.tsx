@@ -10,7 +10,6 @@ export default async function HomePage() {
     <div className="bg-[#1d1d1f] text-white">
       {/* Hero */}
       <section className="px-6 pt-28 pb-32 text-center max-w-5xl mx-auto">
-        <p className="text-sm font-medium text-red-400 tracking-widest uppercase mb-6">BloodConnect</p>
         <h1 className="text-7xl sm:text-8xl font-semibold tracking-tight leading-none mb-6">
           The end of<br />
           <span className="text-red-500">blood shortage.</span>
@@ -123,16 +122,9 @@ export default async function HomePage() {
       <footer className="border-t border-white/10 px-6 py-8 bg-[#1d1d1f]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-white/30 text-xs">© 2026 BloodConnect. Built to save lives.</p>
-          <div className="flex gap-6">
-            {loggedIn ? (
-              <Link href={dashboardHref} className="text-xs text-white/30 hover:text-white/60 transition-colors">Dashboard</Link>
-            ) : (
-              <>
-                <Link href="/sign-in" className="text-xs text-white/30 hover:text-white/60 transition-colors">Sign in</Link>
-                <Link href="/register" className="text-xs text-white/30 hover:text-white/60 transition-colors">Register</Link>
-              </>
-            )}
-          </div>
+          {loggedIn && (
+            <Link href={dashboardHref} className="text-xs text-white/30 hover:text-white/60 transition-colors">Dashboard</Link>
+          )}
         </div>
       </footer>
     </div>
